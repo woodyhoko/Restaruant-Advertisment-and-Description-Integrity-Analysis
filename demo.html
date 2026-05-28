@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaurant Integrity Analyzer</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0d1117;color:#e6edf3;font-family:"Segoe UI",system-ui,sans-serif;padding:20px;min-height:100vh}
+  h1{font-size:20px;margin-bottom:4px;color:#d29922}
+  .sub{color:#8b949e;font-size:13px;margin-bottom:20px}
+  .card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px;margin-bottom:14px}
+  h2{font-size:12px;color:#8b949e;margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  textarea{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;padding:10px;font-size:13px;font-family:inherit;resize:vertical;outline:none}
+  textarea:focus{border-color:#d29922}
+  button{padding:9px 22px;border:none;border-radius:8px;cursor:pointer;background:#d29922;color:#0d1117;font-weight:700;font-size:13px;margin-top:12px;transition:.15s}
+  button:hover{filter:brightness(1.1)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:650px){.grid2{grid-template-columns:1fr}}
+  .score-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+  .metric{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px;text-align:center}
+  .metric .lbl{font-size:11px;color:#8b949e;margin-bottom:3px}
+  .metric .num{font-size:24px;font-weight:700}
+  canvas{width:100%;display:block}
+  .tfidf-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .token{padding:3px 8px;border-radius:12px;font-size:12px;background:#21262d;color:#e6edf3}
+  .token.high{background:#d2992230;color:#d29922;border:1px solid #d2992250}
+  .token.med{background:#58a6ff20;color:#58a6ff;border:1px solid #58a6ff40}
+  .verdict{padding:14px;border-radius:10px;font-size:14px;font-weight:600;text-align:center;margin-top:12px}
+  .verdict.good{background:#3fb95015;border:1px solid #3fb95050;color:#3fb950}
+  .verdict.warn{background:#d2992215;border:1px solid #d2992250;color:#d29922}
+  .verdict.bad{background:#f8514915;border:1px solid #f8514950;color:#f85149}
+</style>
+</head>
+<body>
+<h1>Restaurant Integrity Analyzer</h1>
+<p class="sub">NLP-based consistency analysis — compares advertising claims against customer reviews using TF-IDF cosine similarity, sentiment gap, and topic alignment.</p>
+
+<div class="card">
+  <h2>Input</h2>
+  <div class="grid2">
+    <div>
+      <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px">Advertisement / Self-description</label>
+      <textarea id="adText" rows="6" placeholder="Enter restaurant's self-description or advertising copy…">Experience the finest authentic Italian dining in the heart of downtown. Our award-winning chef crafts exquisite hand-made pasta and wood-fired pizza using only the freshest imported ingredients. Romantic candlelit atmosphere with impeccable service. Open late for unforgettable late-night dining.</textarea>
+    </div>
+    <div>
+      <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px">Customer Reviews (one per line or combined)</label>
+      <textarea id="revText" rows="6" placeholder="Paste customer reviews here…">The pasta was okay but nothing special. Service was slow and we waited 45 minutes for food. Pretty noisy inside, not really romantic. The pizza was decent but I've had better. Not worth the price. Staff was friendly though. Nothing felt authentic — tasted more like Americanized Italian.</textarea>
+    </div>
+  </div>
+  <button id="analyze">Analyze Integrity</button>
+</div>
+
+<div class="score-row" id="scores"></div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>TF-IDF: Top Ad Terms (weight)</h2>
+    <canvas id="adChart" height="200"></canvas>
+    <div class="tfidf-list" id="adTokens"></div>
+  </div>
+  <div class="card">
+    <h2>TF-IDF: Top Review Terms (weight)</h2>
+    <canvas id="revChart" height="200"></canvas>
+    <div class="tfidf-list" id="revTokens"></div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px" id="verdictCard" hidden>
+  <h2>Integrity Assessment</h2>
+  <div id="verdict"></div>
+</div>
+
+<script>
+const STOPWORDS = new Set('a an the and or but in on at to for of with is are was were be been have has had do does did will would could should may might shall from by about into through during before after above below between out up down this that these those i me my we our you your he she it its they them their who which what'.split(' '));
+
+function tokenize(text) {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(t => t.length > 2 && !STOPWORDS.has(t));
+}
+
+function tfIdf(tokens, allTokens) {
+  const tf = {};
+  tokens.forEach(t => tf[t] = (tf[t] || 0) + 1);
+  const maxTf = Math.max(...Object.values(tf));
+  const idf = {};
+  Object.keys(tf).forEach(t => {
+    const docFreq = allTokens.filter(a => a.includes(t)).length + 1;
+    idf[t] = Math.log((allTokens.length + 1) / docFreq);
+  });
+  const tfidf = {};
+  Object.keys(tf).forEach(t => { tfidf[t] = (tf[t] / maxTf) * idf[t]; });
+  return tfidf;
+}
+
+function cosSim(a, b) {
+  const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])];
+  let dot = 0, na = 0, nb = 0;
+  keys.forEach(k => { const av = a[k] || 0, bv = b[k] || 0; dot += av * bv; na += av * av; nb += bv * bv; });
+  return na && nb ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
+}
+
+function sentiment(tokens) {
+  const pos = new Set(['authentic','finest','award','impeccable','fresh','exquisite','romantic','unforgettable','great','excellent','amazing','love','best','perfect','delicious','beautiful','wonderful']);
+  const neg = new Set(['slow','wait','noisy','bad','worst','terrible','awful','overpriced','disappointing','bland','mediocre','rude','small','cold','wrong','nothing','okay']);
+  let score = 0;
+  tokens.forEach(t => { if (pos.has(t)) score += 1; if (neg.has(t)) score -= 1; });
+  return score / Math.max(tokens.length, 1);
+}
+
+function topN(obj, n) {
+  return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+}
+
+function barChart(canvasId, entries, color) {
+  const cv = document.getElementById(canvasId);
+  const ctx = cv.getContext('2d');
+  const W = cv.clientWidth * devicePixelRatio, H = cv.clientHeight * devicePixelRatio;
+  cv.width = W; cv.height = H;
+  const pad = { l: 80, r: 16, t: 10, b: 10 };
+  const max = entries[0]?.[1] || 1;
+  ctx.fillStyle = '#0d1117'; ctx.fillRect(0, 0, W, H);
+  const rowH = (H - pad.t - pad.b) / entries.length;
+  entries.forEach(([term, val], i) => {
+    const y = pad.t + i * rowH + rowH * 0.1;
+    const bw = ((val / max) * (W - pad.l - pad.r));
+    ctx.fillStyle = color + '30'; ctx.fillRect(pad.l, y, W - pad.l - pad.r, rowH * 0.8);
+    ctx.fillStyle = color; ctx.fillRect(pad.l, y, bw, rowH * 0.8);
+    ctx.fillStyle = '#e6edf3'; ctx.font = `${10 * devicePixelRatio}px sans-serif`;
+    ctx.fillText(term, 4, y + rowH * 0.6);
+    ctx.fillStyle = '#8b949e'; ctx.fillText(val.toFixed(2), pad.l + bw + 4, y + rowH * 0.6);
+  });
+}
+
+function renderTokens(elId, top, color) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  top.forEach(([t, v]) => {
+    const d = document.createElement('span');
+    d.className = 'token ' + (v > 0.5 ? 'high' : 'med');
+    d.textContent = t;
+    el.appendChild(d);
+  });
+}
+
+function renderScores(cos, sentGap, composite) {
+  const el = document.getElementById('scores');
+  const scores = [
+    { lbl: 'Cosine Similarity', num: cos.toFixed(2), color: cos > 0.5 ? '#3fb950' : cos > 0.25 ? '#d29922' : '#f85149' },
+    { lbl: 'Sentiment Gap', num: (sentGap > 0 ? '+' : '') + sentGap.toFixed(2), color: Math.abs(sentGap) < 0.02 ? '#3fb950' : sentGap > 0 ? '#f85149' : '#d29922' },
+    { lbl: 'Integrity Score', num: (composite * 100).toFixed(0) + '%', color: composite > 0.6 ? '#3fb950' : composite > 0.35 ? '#d29922' : '#f85149' },
+    { lbl: 'Risk Level', num: composite > 0.6 ? 'LOW' : composite > 0.35 ? 'MED' : 'HIGH', color: composite > 0.6 ? '#3fb950' : composite > 0.35 ? '#d29922' : '#f85149' },
+  ];
+  el.innerHTML = scores.map(s => `<div class="metric"><div class="lbl">${s.lbl}</div><div class="num" style="color:${s.color}">${s.num}</div></div>`).join('');
+}
+
+function analyze() {
+  const adToks = tokenize(document.getElementById('adText').value);
+  const revToks = tokenize(document.getElementById('revText').value);
+  const allCorpus = [adToks, revToks];
+  const adTfidf = tfIdf(adToks, allCorpus);
+  const revTfidf = tfIdf(revToks, allCorpus);
+  const cos = cosSim(adTfidf, revTfidf);
+  const sentAd = sentiment(adToks), sentRev = sentiment(revToks);
+  const sentGap = sentAd - sentRev;
+  const composite = 0.45 * cos + 0.35 * Math.max(0, 1 - sentGap * 5) + 0.2 * (0.5 + cos * 0.5);
+  const topAd = topN(adTfidf, 8), topRev = topN(revTfidf, 8);
+  barChart('adChart', topAd, '#d29922');
+  barChart('revChart', topRev, '#58a6ff');
+  renderTokens('adTokens', topAd, '#d29922');
+  renderTokens('revTokens', topRev, '#58a6ff');
+  renderScores(cos, sentGap, composite);
+  const vc = document.getElementById('verdictCard'); vc.hidden = false;
+  const vd = document.getElementById('verdict');
+  let cls, msg;
+  if (composite > 0.6) { cls = 'good'; msg = '✅ High integrity — advertising claims are broadly consistent with customer experience.'; }
+  else if (composite > 0.35) { cls = 'warn'; msg = '⚠️ Moderate integrity — some claims are supported; others may be exaggerated. Review highlighted terms.'; }
+  else { cls = 'bad'; msg = '🚩 Low integrity — significant gap between advertising copy and reported customer experience. Potential misleading advertising.'; }
+  vd.innerHTML = `<div class="verdict ${cls}">${msg}<br><small style="font-weight:normal;margin-top:4px;display:block">Cosine sim: ${cos.toFixed(3)} | Sentiment gap: ${sentGap.toFixed(3)} | Composite: ${(composite*100).toFixed(0)}%</small></div>`;
+}
+
+document.getElementById('analyze').onclick = analyze;
+analyze();
+</script>
+</body>
+</html>
