@@ -107,10 +107,12 @@ Weights *w₁, w₂, w₃* are set empirically (default 0.4 / 0.3 / 0.3) and can
 
 | File | Description |
 |---|---|
-| `project3.ipynb` | Main analysis — data loading, NLP pipeline, scoring, visualization |
-| `comp4332_project2.py` | Feature extraction module (TF-IDF, sentiment) |
-| `project4.py` | Extended analysis / ablation experiments |
-| `Group04_project3.zip` | Full project package with report |
+| `project3.ipynb` | Main NLP analysis — data loading, TF-IDF, sentiment scoring, integrity visualization |
+| `Group04_project3.zip` | Full project package with report and data |
+| `comp4332_project2.py` | *Separate course project* — node2vec + Word2Vec graph-based link prediction (networkx, gensim) |
+| `project4.py` | *Separate course project* — collaborative filtering with Keras embedding layers |
+
+> **Note:** This repository bundles several COMP 4332 (Big Data Mining) assignments. `comp4332_project2.py` and `project4.py` are independent graph/recommendation tasks unrelated to the restaurant NLP pipeline; the restaurant integrity analysis is in `project3.ipynb`.
 
 ---
 
