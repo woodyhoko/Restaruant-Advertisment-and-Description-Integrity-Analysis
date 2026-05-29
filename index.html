@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaurant Ad &amp; Description Integrity Analysis</title>
+<meta name="description" content="Detecting misleading restaurant claims via NLP consistency analysis between advertising copy and customer reviews.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#16120c;--card:#211a10;--ink:#fbf3e3;--muted:#bba883;--am:#f6b73c;--tl:#43c9a0;--rd:#ff6b5e;--line:rgba(246,183,60,.16)}
+  *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.6;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .bg{position:fixed;inset:0;z-index:0;background:radial-gradient(900px 600px at 80% -5%,#2a2012 0,var(--bg) 60%)}
+  .wrap{position:relative;z-index:3;max-width:1020px;margin:0 auto;padding:0 24px}
+  header{min-height:90vh;display:flex;flex-direction:column;justify-content:center;padding:80px 0 36px}
+  .tag{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--am);border:1px solid var(--line);border-radius:100px;padding:6px 15px;width:fit-content;margin-bottom:22px}
+  h1{font-family:Fraunces;font-weight:600;font-size:clamp(36px,6.5vw,80px);line-height:1.0;letter-spacing:-1px}
+  h1 .it{font-style:italic;color:var(--am)}
+  .lede{font-size:clamp(16px,2vw,21px);color:var(--muted);max-width:660px;margin:24px 0}
+  .cta{display:flex;flex-wrap:wrap;gap:13px;margin-top:28px}
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:14px 26px;border-radius:12px;font-weight:700;font-size:15px;transition:.18s;border:1px solid var(--line)}
+  .btn.p{background:var(--am);color:#2b1c00;border-color:var(--am)}.btn.p:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(246,183,60,.3)}
+  .btn.g{background:rgba(255,255,255,.03)}.btn.g:hover{border-color:var(--am);color:var(--am);transform:translateY(-3px)}
+  section{padding:48px 0}
+  .lbl{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--tl);margin-bottom:8px}
+  .ttl{font-family:Fraunces;font-weight:600;font-size:clamp(24px,3.4vw,38px);margin-bottom:30px}
+  .formula{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;font-family:Fraunces;font-size:clamp(16px,2.4vw,22px)}
+  .formula .s{color:var(--am);font-style:italic}.formula .op{color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:16px}
+  .c{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;transition:.2s}
+  .c:hover{transform:translateY(-4px);border-color:rgba(67,201,160,.45)}
+  .c .ic{font-size:22px;margin-bottom:10px}.c h3{font-size:16px;margin-bottom:8px}.c p{font-size:14px;color:var(--muted)}
+  .c .w{font-size:12px;color:var(--am);font-weight:700;margin-top:10px}
+  footer{border-top:1px solid var(--line);margin-top:50px;padding:38px 0 56px;text-align:center;color:var(--muted);font-size:14px}
+  footer a{color:var(--am)}.fl{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+</style></head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+  <header>
+    <div class="tag">NLP · Information Integrity</div>
+    <h1>Does the menu<br>match the <span class="it">reviews?</span></h1>
+    <p class="lede">Restaurant platforms let operators write glowing self-descriptions next to unfiltered customer reviews — a systematic information asymmetry. This project audits the operator's <i>own</i> claims, quantifying how well a description is corroborated (or contradicted) by the review corpus.</p>
+    <div class="cta">
+      <a class="btn p" href="demo.html">▶ Interactive Demo</a>
+      <a class="btn g" href="https://prezi.com/view/95Q588AKgodUxM5NISLN/">📊 Presentation</a>
+      <a class="btn g" href="https://github.com/woodyhoko/Restaruant-Advertisment-and-Description-Integrity-Analysis#readme">📖 Documentation</a>
+    </div>
+  </header>
+
+  <section>
+    <div class="lbl">the integrity score</div>
+    <div class="ttl">Three NLP signals, one composite.</div>
+    <div class="formula"><span class="s">S</span><span class="op">=</span>(1−w₁)·<span class="s">cos(D,R)</span><span class="op">+</span>w₂·(1−|<span class="s">Δsentiment</span>|)<span class="op">+</span>w₃·(1−<span class="s">JSD</span>)</div>
+  </section>
+
+  <section>
+    <div class="lbl">how it's measured</div>
+    <div class="ttl">Cosine, sentiment, topics.</div>
+    <div class="grid">
+      <div class="c"><div class="ic">🔗</div><h3>TF-IDF cosine</h3><p>Vectorize description and pooled reviews; distinctive claims ("michelin", "authentic Sichuan") dominate over filler.</p><div class="w">weight 0.4</div></div>
+      <div class="c"><div class="ic">😐</div><h3>Sentiment gap</h3><p>VADER compound sentiment of the ad minus the reviews. A glowing description over tepid reviews = overclaiming.</p><div class="w">weight 0.3</div></div>
+      <div class="c"><div class="ic">🧩</div><h3>Topic divergence</h3><p>LDA topic distributions compared by Jensen-Shannon divergence — "romantic fine dining" vs "fast food, long wait".</p><div class="w">weight 0.3</div></div>
+      <div class="c"><div class="ic">🔍</div><h3>What it finds</h3><p>High-integrity listings use specific, verifiable claims; chains beat independents; sentiment gap &gt; 0.3 is the strongest red flag.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="fl"><a href="demo.html">Demo</a><a href="https://prezi.com/view/95Q588AKgodUxM5NISLN/">Presentation</a><a href="https://github.com/woodyhoko/Restaruant-Advertisment-and-Description-Integrity-Analysis">GitHub</a><a href="https://github.com/woodyhoko/Restaruant-Advertisment-and-Description-Integrity-Analysis#readme">README</a></div>
+    Built by <a href="https://github.com/woodyhoko">woodyhoko</a> · Restaurant Advertisement &amp; Description Integrity Analysis
+  </footer>
+</div>
+</body></html>
