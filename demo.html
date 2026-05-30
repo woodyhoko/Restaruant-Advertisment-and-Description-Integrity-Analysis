@@ -3,135 +3,268 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Restaurant Integrity Analyzer</title>
+<title>Restaurant Integrity Analyzer — Interactive Demo</title>
+<meta name="description" content="Interactive NLP demo: compare restaurant advertising claims against customer reviews using TF-IDF cosine similarity, sentiment gap, and topic alignment.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  :root{
+    --bg:#16120c;--card:#211a10;--card2:#1a140c;--ink:#fbf3e3;--muted:#bba883;
+    --am:#f6b73c;--tl:#43c9a0;--rd:#ff6b5e;--line:rgba(246,183,60,.16);--line2:rgba(246,183,60,.28)
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#0d1117;color:#e6edf3;font-family:"Segoe UI",system-ui,sans-serif;padding:20px;min-height:100vh}
-  h1{font-size:20px;margin-bottom:4px;color:#d29922}
-  .sub{color:#8b949e;font-size:13px;margin-bottom:20px}
-  .card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px;margin-bottom:14px}
-  h2{font-size:12px;color:#8b949e;margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-  textarea{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;color:#e6edf3;padding:10px;font-size:13px;font-family:inherit;resize:vertical;outline:none}
-  textarea:focus{border-color:#d29922}
-  button{padding:9px 22px;border:none;border-radius:8px;cursor:pointer;background:#d29922;color:#0d1117;font-weight:700;font-size:13px;margin-top:12px;transition:.15s}
-  button:hover{filter:brightness(1.1)}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media(max-width:650px){.grid2{grid-template-columns:1fr}}
-  .score-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
-  .metric{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px;text-align:center}
-  .metric .lbl{font-size:11px;color:#8b949e;margin-bottom:3px}
-  .metric .num{font-size:24px;font-weight:700}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.55;min-height:100vh;overflow-x:hidden}
+  .bg{position:fixed;inset:0;z-index:0;background:radial-gradient(900px 600px at 85% -8%,#2a2012 0,var(--bg) 58%)}
+  .wrap{position:relative;z-index:3;max-width:1080px;margin:0 auto;padding:0 24px 70px}
+
+  /* ---- top bar ---- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 14px;flex-wrap:wrap;gap:10px}
+  .back{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);transition:.18s;text-decoration:none}
+  .back:hover{color:var(--am);transform:translateX(-3px)}
+  .topbar .links{display:flex;gap:16px;font-size:13px}
+  .topbar .links a{color:var(--muted);text-decoration:none;transition:.15s}
+  .topbar .links a:hover{color:var(--am)}
+
+  /* ---- header ---- */
+  .head{padding:14px 0 26px;border-bottom:1px solid var(--line)}
+  .tag{display:inline-block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--am);border:1px solid var(--line2);border-radius:100px;padding:5px 13px;margin-bottom:16px}
+  h1{font-family:Fraunces,serif;font-weight:600;font-size:clamp(28px,4.5vw,46px);line-height:1.05;letter-spacing:-.5px}
+  h1 .it{font-style:italic;color:var(--am)}
+  .sub{color:var(--muted);font-size:15px;max-width:680px;margin-top:14px}
+
+  /* ---- cards ---- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin-top:18px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  h2{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1.4px}
+  .h2-ico{display:inline-flex;align-items:center;gap:8px}
+
+  /* ---- input ---- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .field label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px;margin-bottom:8px;font-weight:500}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .dot.am{background:var(--am)}.dot.tl{background:var(--tl)}
+  textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:13px;font-size:13.5px;font-family:inherit;line-height:1.5;resize:vertical;outline:none;transition:.15s}
+  textarea::placeholder{color:#6f6450}
+  textarea:focus{border-color:var(--am);box-shadow:0 0 0 3px rgba(246,183,60,.1)}
+  .actions{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border:none;border-radius:12px;cursor:pointer;font-family:inherit;font-weight:700;font-size:14px;transition:.18s}
+  .btn.p{background:var(--am);color:#2b1c00}
+  .btn.p:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(246,183,60,.28)}
+  .btn.g{background:rgba(255,255,255,.04);color:var(--ink);border:1px solid var(--line2)}
+  .btn.g:hover{border-color:var(--am);color:var(--am)}
+  .presets{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap}
+  .presets .lbl{font-size:12px;color:var(--muted)}
+  .chip{font-size:12px;padding:6px 13px;border-radius:100px;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer;font-family:inherit;transition:.15s}
+  .chip:hover{border-color:var(--am);color:var(--am)}
+  .chip.active{background:var(--am);color:#2b1c00;border-color:var(--am);font-weight:600}
+
+  /* ---- results wrapper (fade in) ---- */
+  #results{opacity:0;transform:translateY(8px);transition:.4s}
+  #results.show{opacity:1;transform:none}
+
+  /* ---- score metrics ---- */
+  .score-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+  @media(max-width:720px){.score-row{grid-template-columns:repeat(2,1fr)}}
+  .metric{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 16px;position:relative;overflow:hidden}
+  .metric::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--mc,var(--am))}
+  .metric .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+  .metric .num{font-family:Fraunces,serif;font-size:32px;font-weight:600;line-height:1;color:var(--mc,var(--am))}
+  .metric .hint{font-size:11px;color:var(--muted);margin-top:6px}
+  .metric .meter{height:4px;border-radius:4px;background:rgba(255,255,255,.06);margin-top:11px;overflow:hidden}
+  .metric .meter i{display:block;height:100%;border-radius:4px;background:var(--mc,var(--am));width:0;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+
+  /* ---- charts ---- */
   canvas{width:100%;display:block}
-  .tfidf-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-  .token{padding:3px 8px;border-radius:12px;font-size:12px;background:#21262d;color:#e6edf3}
-  .token.high{background:#d2992230;color:#d29922;border:1px solid #d2992250}
-  .token.med{background:#58a6ff20;color:#58a6ff;border:1px solid #58a6ff40}
-  .verdict{padding:14px;border-radius:10px;font-size:14px;font-weight:600;text-align:center;margin-top:12px}
-  .verdict.good{background:#3fb95015;border:1px solid #3fb95050;color:#3fb950}
-  .verdict.warn{background:#d2992215;border:1px solid #d2992250;color:#d29922}
-  .verdict.bad{background:#f8514915;border:1px solid #f8514950;color:#f85149}
+  .tfidf-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+  .token{padding:4px 11px;border-radius:100px;font-size:12px;background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--line)}
+  .token.high{background:rgba(246,183,60,.16);color:var(--am);border-color:var(--line2)}
+  .token.med{background:rgba(67,201,160,.13);color:var(--tl);border-color:rgba(67,201,160,.3)}
+
+  /* ---- verdict ---- */
+  .verdict{padding:20px;border-radius:16px;display:flex;gap:16px;align-items:flex-start}
+  .verdict .vico{font-size:30px;line-height:1}
+  .verdict .vmain{font-size:15px;font-weight:600;line-height:1.45}
+  .verdict .vmeta{font-size:12.5px;color:var(--muted);font-weight:400;margin-top:8px;font-family:Fraunces,serif}
+  .verdict.good{background:rgba(67,201,160,.1);border:1px solid rgba(67,201,160,.35)}.verdict.good .vmain{color:var(--tl)}
+  .verdict.warn{background:rgba(246,183,60,.1);border:1px solid var(--line2)}.verdict.warn .vmain{color:var(--am)}
+  .verdict.bad{background:rgba(255,107,94,.1);border:1px solid rgba(255,107,94,.35)}.verdict.bad .vmain{color:var(--rd)}
+
+  .foot{text-align:center;color:var(--muted);font-size:13px;margin-top:34px;padding-top:22px;border-top:1px solid var(--line)}
+  .foot a{color:var(--am);text-decoration:none}
 </style>
 </head>
 <body>
-<h1>Restaurant Integrity Analyzer</h1>
-<p class="sub">NLP-based consistency analysis — compares advertising claims against customer reviews using TF-IDF cosine similarity, sentiment gap, and topic alignment.</p>
+<div class="bg"></div>
+<div class="wrap">
 
-<div class="card">
-  <h2>Input</h2>
-  <div class="grid2">
-    <div>
-      <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px">Advertisement / Self-description</label>
-      <textarea id="adText" rows="6" placeholder="Enter restaurant's self-description or advertising copy…">Experience the finest authentic Italian dining in the heart of downtown. Our award-winning chef crafts exquisite hand-made pasta and wood-fired pizza using only the freshest imported ingredients. Romantic candlelit atmosphere with impeccable service. Open late for unforgettable late-night dining.</textarea>
-    </div>
-    <div>
-      <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px">Customer Reviews (one per line or combined)</label>
-      <textarea id="revText" rows="6" placeholder="Paste customer reviews here…">The pasta was okay but nothing special. Service was slow and we waited 45 minutes for food. Pretty noisy inside, not really romantic. The pizza was decent but I've had better. Not worth the price. Staff was friendly though. Nothing felt authentic — tasted more like Americanized Italian.</textarea>
+  <div class="topbar">
+    <a class="back" href="index.html">← Back to overview</a>
+    <div class="links">
+      <a href="https://github.com/woodyhoko/Restaruant-Advertisment-and-Description-Integrity-Analysis">GitHub</a>
+      <a href="https://github.com/woodyhoko/Restaruant-Advertisment-and-Description-Integrity-Analysis#readme">README</a>
     </div>
   </div>
-  <button id="analyze">Analyze Integrity</button>
-</div>
 
-<div class="score-row" id="scores"></div>
-
-<div class="grid2">
-  <div class="card">
-    <h2>TF-IDF: Top Ad Terms (weight)</h2>
-    <canvas id="adChart" height="200"></canvas>
-    <div class="tfidf-list" id="adTokens"></div>
+  <div class="head">
+    <span class="tag">Interactive Demo · runs in your browser</span>
+    <h1>Does the description<br>match the <span class="it">reviews?</span></h1>
+    <p class="sub">Paste a restaurant's self-description and a batch of customer reviews. The analyzer compares them with TF-IDF cosine similarity, a sentiment gap, and topic alignment to produce an integrity score — all client-side, no data leaves this page.</p>
   </div>
-  <div class="card">
-    <h2>TF-IDF: Top Review Terms (weight)</h2>
-    <canvas id="revChart" height="200"></canvas>
-    <div class="tfidf-list" id="revTokens"></div>
-  </div>
-</div>
 
-<div class="card" style="margin-top:14px" id="verdictCard" hidden>
-  <h2>Integrity Assessment</h2>
-  <div id="verdict"></div>
+  <div class="card">
+    <div class="card-h">
+      <h2 class="h2-ico">✍️ Input</h2>
+      <div class="presets">
+        <span class="lbl">Try a sample:</span>
+        <button class="chip" data-preset="overclaim">Overclaiming</button>
+        <button class="chip" data-preset="honest">Honest</button>
+        <button class="chip" data-preset="clear">Clear</button>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label><span class="dot am"></span>Advertisement / Self-description</label>
+        <textarea id="adText" rows="7" placeholder="Enter the restaurant's self-description or advertising copy…">Experience the finest authentic Italian dining in the heart of downtown. Our award-winning chef crafts exquisite hand-made pasta and wood-fired pizza using only the freshest imported ingredients. Romantic candlelit atmosphere with impeccable service. Open late for unforgettable late-night dining.</textarea>
+      </div>
+      <div class="field">
+        <label><span class="dot tl"></span>Customer Reviews (one per line or combined)</label>
+        <textarea id="revText" rows="7" placeholder="Paste customer reviews here…">The pasta was okay but nothing special. Service was slow and we waited 45 minutes for food. Pretty noisy inside, not really romantic. The pizza was decent but I've had better. Not worth the price. Staff was friendly though. Nothing felt authentic — tasted more like Americanized Italian.</textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn p" id="analyze">▶ Analyze Integrity</button>
+      <button class="btn g" id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <div id="results">
+    <div class="score-row" id="scores"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2 class="h2-ico">🔗 TF-IDF · Top Ad Terms</h2>
+        <canvas id="adChart" height="210"></canvas>
+        <div class="tfidf-list" id="adTokens"></div>
+      </div>
+      <div class="card">
+        <h2 class="h2-ico">💬 TF-IDF · Top Review Terms</h2>
+        <canvas id="revChart" height="210"></canvas>
+        <div class="tfidf-list" id="revTokens"></div>
+      </div>
+    </div>
+
+    <div class="card" id="verdictCard">
+      <h2 class="h2-ico">⚖️ Integrity Assessment</h2>
+      <div id="verdict"></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    Built by <a href="https://github.com/woodyhoko">woodyhoko</a> · Restaurant Advertisement &amp; Description Integrity Analysis
+  </div>
 </div>
 
 <script>
+const C = {am:'#f6b73c', tl:'#43c9a0', rd:'#ff6b5e', muted:'#bba883', ink:'#fbf3e3', bg:'#1a140c'};
+
+const PRESETS = {
+  overclaim: {
+    ad: "Experience the finest authentic Italian dining in the heart of downtown. Our award-winning chef crafts exquisite hand-made pasta and wood-fired pizza using only the freshest imported ingredients. Romantic candlelit atmosphere with impeccable service. Open late for unforgettable late-night dining.",
+    rev: "The pasta was okay but nothing special. Service was slow and we waited 45 minutes for food. Pretty noisy inside, not really romantic. The pizza was decent but I've had better. Not worth the price. Staff was friendly though. Nothing felt authentic — tasted more like Americanized Italian."
+  },
+  honest: {
+    ad: "A small neighborhood ramen shop. We make rich tonkotsu broth simmered for 18 hours, fresh noodles daily, and a short menu done well. Casual counter seating, cash and card accepted. Expect a short wait at peak hours.",
+    rev: "Rich tonkotsu broth, you can tell it's simmered for hours. Noodles were perfectly chewy and fresh. Small casual spot with counter seating, had a short wait but worth it. Honest menu, does a few things really well. Friendly staff."
+  },
+  clear: { ad: "", rev: "" }
+};
+
 const STOPWORDS = new Set('a an the and or but in on at to for of with is are was were be been have has had do does did will would could should may might shall from by about into through during before after above below between out up down this that these those i me my we our you your he she it its they them their who which what'.split(' '));
 
-function tokenize(text) {
+function tokenize(text){
   return text.toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(t => t.length > 2 && !STOPWORDS.has(t));
 }
 
-function tfIdf(tokens, allTokens) {
+function tfIdf(tokens, allTokens){
   const tf = {};
   tokens.forEach(t => tf[t] = (tf[t] || 0) + 1);
-  const maxTf = Math.max(...Object.values(tf));
-  const idf = {};
+  const vals = Object.values(tf);
+  if(!vals.length) return {};
+  const maxTf = Math.max(...vals);
+  const tfidf = {};
   Object.keys(tf).forEach(t => {
     const docFreq = allTokens.filter(a => a.includes(t)).length + 1;
-    idf[t] = Math.log((allTokens.length + 1) / docFreq);
+    const idf = Math.log((allTokens.length + 1) / docFreq);
+    tfidf[t] = (tf[t] / maxTf) * idf;
   });
-  const tfidf = {};
-  Object.keys(tf).forEach(t => { tfidf[t] = (tf[t] / maxTf) * idf[t]; });
   return tfidf;
 }
 
-function cosSim(a, b) {
+function cosSim(a, b){
   const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])];
   let dot = 0, na = 0, nb = 0;
-  keys.forEach(k => { const av = a[k] || 0, bv = b[k] || 0; dot += av * bv; na += av * av; nb += bv * bv; });
+  keys.forEach(k => { const av = a[k]||0, bv = b[k]||0; dot += av*bv; na += av*av; nb += bv*bv; });
   return na && nb ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
 }
 
-function sentiment(tokens) {
-  const pos = new Set(['authentic','finest','award','impeccable','fresh','exquisite','romantic','unforgettable','great','excellent','amazing','love','best','perfect','delicious','beautiful','wonderful']);
-  const neg = new Set(['slow','wait','noisy','bad','worst','terrible','awful','overpriced','disappointing','bland','mediocre','rude','small','cold','wrong','nothing','okay']);
+function sentiment(tokens){
+  const pos = new Set(['authentic','finest','award','impeccable','fresh','freshest','exquisite','romantic','unforgettable','great','excellent','amazing','love','best','perfect','delicious','beautiful','wonderful','rich','friendly','worth','chewy']);
+  const neg = new Set(['slow','wait','waited','noisy','bad','worst','terrible','awful','overpriced','disappointing','bland','mediocre','rude','small','cold','wrong','nothing','okay','decent']);
   let score = 0;
   tokens.forEach(t => { if (pos.has(t)) score += 1; if (neg.has(t)) score -= 1; });
   return score / Math.max(tokens.length, 1);
 }
 
-function topN(obj, n) {
+function topN(obj, n){
   return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
 }
 
-function barChart(canvasId, entries, color) {
+function barChart(canvasId, entries, color){
   const cv = document.getElementById(canvasId);
   const ctx = cv.getContext('2d');
-  const W = cv.clientWidth * devicePixelRatio, H = cv.clientHeight * devicePixelRatio;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth * dpr, H = cv.clientHeight * dpr;
   cv.width = W; cv.height = H;
-  const pad = { l: 80, r: 16, t: 10, b: 10 };
+  ctx.clearRect(0,0,W,H);
+  if(!entries.length) return;
+  const pad = { l: 92*dpr, r: 44*dpr, t: 6*dpr, b: 6*dpr };
   const max = entries[0]?.[1] || 1;
-  ctx.fillStyle = '#0d1117'; ctx.fillRect(0, 0, W, H);
   const rowH = (H - pad.t - pad.b) / entries.length;
+  const barH = rowH * 0.62;
   entries.forEach(([term, val], i) => {
-    const y = pad.t + i * rowH + rowH * 0.1;
-    const bw = ((val / max) * (W - pad.l - pad.r));
-    ctx.fillStyle = color + '30'; ctx.fillRect(pad.l, y, W - pad.l - pad.r, rowH * 0.8);
-    ctx.fillStyle = color; ctx.fillRect(pad.l, y, bw, rowH * 0.8);
-    ctx.fillStyle = '#e6edf3'; ctx.font = `${10 * devicePixelRatio}px sans-serif`;
-    ctx.fillText(term, 4, y + rowH * 0.6);
-    ctx.fillStyle = '#8b949e'; ctx.fillText(val.toFixed(2), pad.l + bw + 4, y + rowH * 0.6);
+    const y = pad.t + i * rowH + (rowH - barH)/2;
+    const fullW = W - pad.l - pad.r;
+    const bw = Math.max(2, (val / max) * fullW);
+    const r = barH/2;
+    // track
+    roundRect(ctx, pad.l, y, fullW, barH, r); ctx.fillStyle = 'rgba(255,255,255,.05)'; ctx.fill();
+    // bar gradient
+    const g = ctx.createLinearGradient(pad.l, 0, pad.l+bw, 0);
+    g.addColorStop(0, color); g.addColorStop(1, color + 'aa');
+    roundRect(ctx, pad.l, y, bw, barH, r); ctx.fillStyle = g; ctx.fill();
+    // term label
+    ctx.fillStyle = C.ink; ctx.font = `${12*dpr}px Inter, sans-serif`; ctx.textBaseline = 'middle';
+    ctx.textAlign = 'right'; ctx.fillText(term, pad.l - 10*dpr, y + barH/2);
+    // value
+    ctx.fillStyle = C.muted; ctx.font = `${11*dpr}px Inter, sans-serif`; ctx.textAlign = 'left';
+    ctx.fillText(val.toFixed(2), pad.l + bw + 8*dpr, y + barH/2);
   });
 }
 
-function renderTokens(elId, top, color) {
+function roundRect(ctx, x, y, w, h, r){
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+
+function renderTokens(elId, top){
   const el = document.getElementById(elId);
   el.innerHTML = '';
   top.forEach(([t, v]) => {
@@ -142,43 +275,100 @@ function renderTokens(elId, top, color) {
   });
 }
 
-function renderScores(cos, sentGap, composite) {
+function colorFor(good, mid){ return good ? C.tl : mid ? C.am : C.rd; }
+
+function renderScores(cos, sentGap, composite){
   const el = document.getElementById('scores');
+  const sg = Math.abs(sentGap);
   const scores = [
-    { lbl: 'Cosine Similarity', num: cos.toFixed(2), color: cos > 0.5 ? '#3fb950' : cos > 0.25 ? '#d29922' : '#f85149' },
-    { lbl: 'Sentiment Gap', num: (sentGap > 0 ? '+' : '') + sentGap.toFixed(2), color: Math.abs(sentGap) < 0.02 ? '#3fb950' : sentGap > 0 ? '#f85149' : '#d29922' },
-    { lbl: 'Integrity Score', num: (composite * 100).toFixed(0) + '%', color: composite > 0.6 ? '#3fb950' : composite > 0.35 ? '#d29922' : '#f85149' },
-    { lbl: 'Risk Level', num: composite > 0.6 ? 'LOW' : composite > 0.35 ? 'MED' : 'HIGH', color: composite > 0.6 ? '#3fb950' : composite > 0.35 ? '#d29922' : '#f85149' },
+    { lbl:'Cosine Similarity', num: cos.toFixed(2), pct: cos*100,
+      color: colorFor(cos>0.5, cos>0.25), hint:'claim ↔ review overlap' },
+    { lbl:'Sentiment Gap', num:(sentGap>0?'+':'')+sentGap.toFixed(2), pct: Math.min(100, sg*100/0.15),
+      color: colorFor(sg<0.02, sentGap<=0), hint: sentGap>0?'ad rosier than reviews':'reviews match tone' },
+    { lbl:'Integrity Score', num:(composite*100).toFixed(0)+'%', pct: composite*100,
+      color: colorFor(composite>0.6, composite>0.35), hint:'weighted composite' },
+    { lbl:'Risk Level', num: composite>0.6?'LOW':composite>0.35?'MED':'HIGH', pct: 100-composite*100,
+      color: colorFor(composite>0.6, composite>0.35), hint:'misleading-claim risk' },
   ];
-  el.innerHTML = scores.map(s => `<div class="metric"><div class="lbl">${s.lbl}</div><div class="num" style="color:${s.color}">${s.num}</div></div>`).join('');
+  el.innerHTML = scores.map(s => `
+    <div class="metric" style="--mc:${s.color}">
+      <div class="lbl">${s.lbl}</div>
+      <div class="num">${s.num}</div>
+      <div class="hint">${s.hint}</div>
+      <div class="meter"><i data-w="${Math.max(0,Math.min(100,s.pct)).toFixed(0)}"></i></div>
+    </div>`).join('');
+  requestAnimationFrame(() => {
+    document.querySelectorAll('#scores .meter i').forEach(i => i.style.width = i.dataset.w + '%');
+  });
 }
 
-function analyze() {
+function analyze(){
   const adToks = tokenize(document.getElementById('adText').value);
   const revToks = tokenize(document.getElementById('revText').value);
+  if(!adToks.length || !revToks.length){
+    document.getElementById('results').classList.remove('show');
+    return;
+  }
   const allCorpus = [adToks, revToks];
   const adTfidf = tfIdf(adToks, allCorpus);
   const revTfidf = tfIdf(revToks, allCorpus);
   const cos = cosSim(adTfidf, revTfidf);
-  const sentAd = sentiment(adToks), sentRev = sentiment(revToks);
-  const sentGap = sentAd - sentRev;
-  const composite = 0.45 * cos + 0.35 * Math.max(0, 1 - sentGap * 5) + 0.2 * (0.5 + cos * 0.5);
+  const sentGap = sentiment(adToks) - sentiment(revToks);
+  const composite = 0.45*cos + 0.35*Math.max(0, 1 - sentGap*5) + 0.2*(0.5 + cos*0.5);
   const topAd = topN(adTfidf, 8), topRev = topN(revTfidf, 8);
-  barChart('adChart', topAd, '#d29922');
-  barChart('revChart', topRev, '#58a6ff');
-  renderTokens('adTokens', topAd, '#d29922');
-  renderTokens('revTokens', topRev, '#58a6ff');
+  barChart('adChart', topAd, C.am);
+  barChart('revChart', topRev, C.tl);
+  renderTokens('adTokens', topAd);
+  renderTokens('revTokens', topRev);
   renderScores(cos, sentGap, composite);
-  const vc = document.getElementById('verdictCard'); vc.hidden = false;
+
   const vd = document.getElementById('verdict');
-  let cls, msg;
-  if (composite > 0.6) { cls = 'good'; msg = '✅ High integrity — advertising claims are broadly consistent with customer experience.'; }
-  else if (composite > 0.35) { cls = 'warn'; msg = '⚠️ Moderate integrity — some claims are supported; others may be exaggerated. Review highlighted terms.'; }
-  else { cls = 'bad'; msg = '🚩 Low integrity — significant gap between advertising copy and reported customer experience. Potential misleading advertising.'; }
-  vd.innerHTML = `<div class="verdict ${cls}">${msg}<br><small style="font-weight:normal;margin-top:4px;display:block">Cosine sim: ${cos.toFixed(3)} | Sentiment gap: ${sentGap.toFixed(3)} | Composite: ${(composite*100).toFixed(0)}%</small></div>`;
+  let cls, ico, msg;
+  if (composite > 0.6){ cls='good'; ico='✅'; msg='High integrity — advertising claims are broadly consistent with the customer experience.'; }
+  else if (composite > 0.35){ cls='warn'; ico='⚠️'; msg='Moderate integrity — some claims are supported, others may be exaggerated. Review the highlighted terms.'; }
+  else { cls='bad'; ico='🚩'; msg='Low integrity — significant gap between advertising copy and reported customer experience. Potential misleading advertising.'; }
+  vd.innerHTML = `<div class="verdict ${cls}">
+      <div class="vico">${ico}</div>
+      <div>
+        <div class="vmain">${msg}</div>
+        <div class="vmeta">cosine ${cos.toFixed(3)} &nbsp;·&nbsp; sentiment gap ${(sentGap>0?'+':'')+sentGap.toFixed(3)} &nbsp;·&nbsp; composite ${(composite*100).toFixed(0)}%</div>
+      </div>
+    </div>`;
+
+  document.getElementById('results').classList.add('show');
 }
 
+// ---- wiring ----
 document.getElementById('analyze').onclick = analyze;
+
+document.getElementById('clearBtn').onclick = () => {
+  document.getElementById('adText').value = '';
+  document.getElementById('revText').value = '';
+  document.getElementById('results').classList.remove('show');
+  setActiveChip(null);
+};
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.onclick = () => {
+    const p = PRESETS[chip.dataset.preset];
+    document.getElementById('adText').value = p.ad;
+    document.getElementById('revText').value = p.rev;
+    setActiveChip(chip);
+    if(p.ad && p.rev) analyze();
+    else document.getElementById('results').classList.remove('show');
+  };
+});
+
+function setActiveChip(active){
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === active));
+}
+
+window.addEventListener('resize', () => {
+  if(document.getElementById('results').classList.contains('show')) analyze();
+});
+
+// initial run with the default overclaiming sample
+setActiveChip(document.querySelector('[data-preset="overclaim"]'));
 analyze();
 </script>
 </body>
